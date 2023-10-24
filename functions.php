@@ -156,6 +156,18 @@ function myplugin_save_postdata( $post_id ) {
             ),
         ),
     ));
+    register_rest_route('lojas/v1', '/pagina/', array(
+        'methods' => 'GET',
+        'callback' => 'obter_pagina_por_id',
+        'args' => array(
+            'id' => array(
+                'validate_callback' => function($param, $request, $key) {
+                    return is_string($param);
+                }
+            ),
+        ),
+    ));
+
 }
 
 add_action('rest_api_init', 'registrar_endpoint_lojas');
@@ -206,6 +218,23 @@ function obter_lojas($data) {
     }
 
     return rest_ensure_response($resposta);
+}
+
+function obter_pagina_por_id($data) {
+    $pagina_id = $data['id'];
+    $pagina = get_post($pagina_id);
+
+    if ($pagina) {
+        $resposta = array(
+            'id' => $pagina->ID,
+            'titulo' => $pagina->post_title,
+            'conteudo' => apply_filters('the_content', $pagina->post_content),
+            // Adicione outros campos personalizados conforme necessário
+        );
+        return rest_ensure_response($resposta);
+    } else {
+        return new WP_Error('nao_encontrado', 'Página não encontrada', array('status' => 404));
+    }
 }
 
  /**************** FIM - Rest API LOJAS****************** */
