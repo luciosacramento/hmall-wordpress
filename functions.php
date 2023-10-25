@@ -1,10 +1,13 @@
 <?php
 
-function adicionar_tamanho_imagem_personalizado() {
+header("Content-Type: application/json");
+
+
+/*function adicionar_tamanho_imagem_personalizado() {
     add_image_size( 'imagem-530x353', 530, 353, true ); // Largura, altura, cortar?
 }
 add_action( 'after_setup_theme', 'adicionar_tamanho_imagem_personalizado' );
-
+*/
 
 add_action( 'after_setup_theme', 'theme_setup' );
 
@@ -14,9 +17,17 @@ function theme_setup() {
 
 function add_support_to_pages() {
     add_post_type_support( 'page', 'excerpt' );
+    unregister_post_type('post');
 }
 
 add_theme_support( 'post-thumbnails' );
+
+function ocultar_tipo_de_post_do_menu() {
+    remove_menu_page('edit.php');
+    remove_menu_page('edit-comments.php');
+}
+
+add_action('admin_menu', 'ocultar_tipo_de_post_do_menu');
 
 /****************Post customizado LOJAS****************** */
 
@@ -142,104 +153,7 @@ function myplugin_save_postdata( $post_id ) {
   }
 
   /****************FIM - Post customizado LOJAS****************** */
- /**************** Rest API LOJAS****************** */
-
- function registrar_endpoint_lojas() {
-    register_rest_route('lojas/v1', '/lista/', array(
-        'methods' => 'GET',
-        'callback' => 'obter_lojas',
-        'args' => array(
-            'busca' => array(
-                'validate_callback' => function($param, $request, $key) {
-                    return is_string($param);
-                }
-            ),
-        ),
-    ));
-    register_rest_route('lojas/v1', '/pagina/', array(
-        'methods' => 'GET',
-        'callback' => 'obter_pagina_por_id',
-        'args' => array(
-            'id' => array(
-                'validate_callback' => function($param, $request, $key) {
-                    return is_string($param);
-                }
-            ),
-        ),
-    ));
-
-}
-
-add_action('rest_api_init', 'registrar_endpoint_lojas');
-
-function obter_lojas($data) {
-    $busca = $data['busca'];
-    
-    $args = array(
-        'post_type' => 'lojas',
-        'posts_per_page' => -1,
-        's' => $busca // Realiza a pesquisa no título e conteúdo do post
-    );
-
-    $lojas = get_posts($args);
-
-    $args = array(
-        'post_type' => 'lojas',
-        'posts_per_page' => -1,
-        'meta_query' => array(
-            array(
-                'key' => 'area_atuacao',
-                'value' => $busca,
-                'compare' => 'LIKE',
-            ),
-        ),
-    );
-
-    $lojas2 = get_posts($args);
-
-    $lojas = array_merge( $lojas2, $lojas );
-
-    $resposta = array();
-
-    foreach ($lojas as $loja) {
-        $imagem_id = get_post_meta($loja->ID, 'imagem_id', true);
-        $imagem_url = ($imagem_id) ? wp_get_attachment_url($imagem_id) : '';
-
-        $resposta[] = array(
-            'id' => $loja->ID,
-            'titulo' => $loja->post_title,
-            'area_atuacao' => get_post_meta($loja->ID, 'area_atuacao', true),
-            'imagem_url' => $imagem_url,
-            'rede_social' => get_post_meta($loja->ID, 'rede_social', true),
-            'link_rede_social' => get_post_meta($loja->ID, 'link_rede_social', true),
-            'tipo_rede_social' => get_post_meta($loja->ID, 'tipo_rede_social', true),
-            'telefone' => get_post_meta($loja->ID, 'telefone', true),
-        );
-    }
-
-    return rest_ensure_response($resposta);
-}
-
-function obter_pagina_por_id($data) {
-    $pagina_id = $data['id'];
-    $pagina = get_post($pagina_id);
-
-    if ($pagina) {
-        $resposta = array(
-            'id' => $pagina->ID,
-            'titulo' => $pagina->post_title,
-            'conteudo' => apply_filters('the_content', $pagina->post_content),
-            // Adicione outros campos personalizados conforme necessário
-        );
-        return rest_ensure_response($resposta);
-    } else {
-        return new WP_Error('nao_encontrado', 'Página não encontrada', array('status' => 404));
-    }
-}
-
- /**************** FIM - Rest API LOJAS****************** */
-
-
+ 
   /****************Adicionando campo personalizados em Configurações****************** */
 
     // Função para exibir os campos personalizados no formulário de configurações
@@ -322,39 +236,160 @@ function exibir_mapa_field() {
 
   /****************FIM - Adicionando campo personalizados em Configurações****************** */
 
-// Registrar a localização do menu personalizado
-function registrar_menu_personalizado() {
-    register_nav_menu('header', __('header'));
-}
-add_action('init', 'registrar_menu_personalizado');
+  /**************** Rest API LOJAS****************** */
 
-// Walker personalizado para formatar o menu
-class Walker_Nav_Menu_Custom extends Walker_Nav_Menu {
-    function start_lvl(&$output, $depth = 0, $args = null) {
-        $output .= '<ul class="submenu">';
+ function registrar_endpoint_lojas() {
+    register_rest_route('lojas/v1', '/lista/', array(
+        'methods' => 'GET',
+        'callback' => 'obter_lojas',
+        'args' => array(
+            'busca' => array(
+                'validate_callback' => function($param, $request, $key) {
+                    return is_string($param);
+                }
+            ),
+        ),
+    ));
+    register_rest_route('lojas/v1', '/pagina/', array(
+        'methods' => 'GET',
+        'callback' => 'obter_pagina_por_id',
+        'args' => array(
+            'id' => array(
+                'validate_callback' => function($param, $request, $key) {
+                    return is_string($param);
+                }
+            ),
+        ),
+    ));
+
+    register_rest_route('lojas/v1', '/configuracoes-personalizadas/', array(
+        'methods' => 'GET',
+        'callback' => 'obter_configuracoes_personalizadas',
+    ));
+
+    register_rest_route( 'lojas/v1', '/enviar-email/', array(
+        'methods' => 'POST',
+        'callback' => 'enviar_email',
+        'args' => array(
+            'remetente' => array(
+                'required' => true,
+                'validate_callback' => function($param, $request, $key) {
+                    return is_email($param);
+                }
+            ),
+            'telefone' => array(
+                'required' => false,
+            ),
+            'nome' => array(
+                'required' => false,
+            ),
+            'mensagem' => array(
+                'required' => true,
+            ),
+        ),
+    ) );
+
+}
+
+add_action('rest_api_init', 'registrar_endpoint_lojas');
+
+function obter_lojas($data) {
+    $busca = $data['busca'];
+    
+    $args = array(
+        'post_type' => 'lojas',
+        'posts_per_page' => -1,
+        's' => $busca // Realiza a pesquisa no título e conteúdo do post
+    );
+
+    $lojas = get_posts($args);
+
+    $args = array(
+        'post_type' => 'lojas',
+        'posts_per_page' => -1,
+        'meta_query' => array(
+            array(
+                'key' => 'area_atuacao',
+                'value' => $busca,
+                'compare' => 'LIKE',
+            ),
+        ),
+    );
+
+    $lojas2 = get_posts($args);
+
+    $lojas = array_merge( $lojas2, $lojas );
+
+    $resposta = array();
+
+    foreach ($lojas as $loja) {
+        $imagem_id = get_post_meta($loja->ID, 'imagem_id', true);
+        $imagem_url = ($imagem_id) ? wp_get_attachment_url($imagem_id) : '';
+
+        $resposta[] = array(
+            'id' => $loja->ID,
+            'titulo' => $loja->post_title,
+            'area_atuacao' => get_post_meta($loja->ID, 'area_atuacao', true),
+            'imagem_url' => $imagem_url,
+            'rede_social' => get_post_meta($loja->ID, 'rede_social', true),
+            'link_rede_social' => get_post_meta($loja->ID, 'link_rede_social', true),
+            'tipo_rede_social' => get_post_meta($loja->ID, 'tipo_rede_social', true),
+            'telefone' => get_post_meta($loja->ID, 'telefone', true),
+        );
     }
 
-    function start_el(&$output, $item, $depth = 0, $args = null, $id = 0) {
-        $classes = empty($item->classes) ? array() : (array) $item->classes;
-        $output .= '<li' . (in_array('menu-item-has-children', $classes) ? ' class="has-submenu"' : '') . '>';
-        $output .= '<a href="' . $item->url . '">' . $item->title . '</a>';
-    }
+    return rest_ensure_response($resposta);
+}
 
-    function end_el(&$output, $item, $depth = 0, $args = null) {
-        $output .= '</li>';
-    }
+function obter_pagina_por_id($data) {
+    $pagina_id = $data['id'];
+    $pagina = get_post($pagina_id);
 
-    function end_lvl(&$output, $depth = 0, $args = null) {
-        $output .= '</ul>';
+    if ($pagina) {
+        $resposta = array(
+            'id' => $pagina->ID,
+            'titulo' => $pagina->post_title,
+            'conteudo' => apply_filters('the_content', $pagina->post_content),
+            // Adicione outros campos personalizados conforme necessário
+        );
+        return rest_ensure_response($resposta);
+    } else {
+        return new WP_Error('nao_encontrado', 'Página não encontrada', array('status' => 404));
     }
 }
 
-function separeLetterNumber($words){
-    return preg_replace("/[^0-9]/", "", $words ) . "<span>".preg_replace('/\d+/u', '', $words)."</span>";
+function obter_configuracoes_personalizadas() {
+    $configuracoes = array(
+        'email' => get_option('email_field'),
+        'telefone' => get_option('telefone_field'),
+        'instagram' => get_option('instagram_field'),
+        'endereco' => get_option('endereco_field'),
+        'horario_funcionamento' => get_option('horario_funcionamento_field'),
+        'mapa' => get_option('mapa_field'),
+    );
+
+    return rest_ensure_response($configuracoes);
 }
 
-function get_custom_meta($post_id, $key, $single = true):string {
-    $value = get_post_meta($post_id, $key, $single);
-    $value = str_replace("http://localhost/freire", get_home_url(), $value);
-    return $value;
+
+function enviar_email( $data ) {
+    $from = $data['remetente'];
+    $telefone = $data['telefone'];
+    $nome = $data['nome'];
+    $to = get_option('email_field');
+    $message = $data['mensagem'].'<br><br>De: '.$nome.'<br><br>Telefone: '.$telefone;
+
+    $headers = "From: $nome <$from>". "\r\n" .
+               "Reply-To: $from" . "\r\n" .
+               "X-Mailer: PHP/" . phpversion();
+
+    $result = wp_mail( $to, "Mensagem enviada do site por ".$nome, $message, $headers );
+
+    if ( $result ) {
+        return rest_ensure_response( array( 'message' => 'E-mail enviado com sucesso!','status' => 'ok' ) );
+    } else {
+        return rest_ensure_response( array( 'message' => 'Falha ao enviar o e-mail.','status' => 'error' ) );
+    }
 }
+
+ /**************** FIM - Rest API LOJAS****************** */
