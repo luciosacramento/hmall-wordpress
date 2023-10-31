@@ -238,6 +238,17 @@ function exibir_mapa_field() {
 
   /**************** Rest API LOJAS****************** */
 
+  function adicionar_cors_headers() {
+    header( 'Access-Control-Allow-Origin: *' );
+    header( 'Access-Control-Allow-Methods: GET,POST' );
+    header( 'Access-Control-Allow-Credentials: true' );
+    header( 'Access-Control-Expose-Headers: Link' );
+}
+
+add_action( 'rest_api_init', function() {
+    add_filter( 'rest_pre_serve_request', 'adicionar_cors_headers' );
+}, 15 );
+
  function registrar_endpoint_lojas() {
     register_rest_route('lojas/v1', '/lista/', array(
         'methods' => 'GET',
@@ -294,31 +305,45 @@ function exibir_mapa_field() {
 add_action('rest_api_init', 'registrar_endpoint_lojas');
 
 function obter_lojas($data) {
-    $busca = $data['busca'];
+
+    if($data['busca']){
+        $busca = $data['busca'];
+        $args = array(
+            'post_type' => 'lojas',
+            'posts_per_page' => -1,
+            'post_status' => 'publish', 
+            's' => $busca // Realiza a pesquisa no título e conteúdo do post
+        );
     
-    $args = array(
-        'post_type' => 'lojas',
-        'posts_per_page' => -1,
-        's' => $busca // Realiza a pesquisa no título e conteúdo do post
-    );
-
-    $lojas = get_posts($args);
-
-    $args = array(
-        'post_type' => 'lojas',
-        'posts_per_page' => -1,
-        'meta_query' => array(
-            array(
-                'key' => 'area_atuacao',
-                'value' => $busca,
-                'compare' => 'LIKE',
+        $lojas = get_posts($args);
+    
+        $args = array(
+            'post_type' => 'lojas',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'area_atuacao',
+                    'value' => $busca,
+                    'compare' => 'LIKE',
+                ),
             ),
-        ),
-    );
-
-    $lojas2 = get_posts($args);
-
-    $lojas = array_merge( $lojas2, $lojas );
+            'post_status' => 'publish', 
+        );
+    
+        $lojas2 = get_posts($args);
+    
+        $lojas = array_merge( $lojas2, $lojas );
+    
+        $lojas = array_unique($lojas);
+    }else{
+        $args = array(
+            'post_type' => 'lojas',
+            'posts_per_page' => -1,
+            'post_status' => 'publish', 
+        );
+        $lojas = get_posts($args);
+        $lojas = array_unique($lojas);
+    }
 
     $resposta = array();
 
@@ -371,6 +396,9 @@ function obter_configuracoes_personalizadas() {
     return rest_ensure_response($configuracoes);
 }
 
+add_filter('wp_mail_content_type', function( $content_type ) {
+    return 'text/html';
+});
 
 function enviar_email( $data ) {
     $from = $data['remetente'];
