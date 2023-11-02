@@ -103,7 +103,12 @@ function exibir_campos_personalizados( $post ) {
     <input type="text" id="link_rede_social" name="link_rede_social" value="<?php echo esc_attr( $link_rede_social ); ?>" /><br><br>
 
     <label for="tipo_rede_social">Tipo da Rede Social:</label><br>
-    <input type="text" id="tipo_rede_social" name="tipo_rede_social" value="<?php echo esc_attr( $tipo_rede_social ); ?>" /><br><br>
+    <select id="tipo_rede_social" name="tipo_rede_social">
+        <option value="instagram" <?php selected( $tipo_rede_social, 'instagram' ); ?>>Instagram</option>
+        <option value="facebook" <?php selected( $tipo_rede_social, 'facebook' ); ?>>Facebook</option>
+        <option value="site" <?php selected( $tipo_rede_social, 'site' ); ?>>Site</option>
+        <option value="twitter" <?php selected( $tipo_rede_social, 'twitter' ); ?>>Twitter</option>
+    </select><br><br>
 
     <label for="telefone">Telefone:</label><br>
     <input type="text" id="telefone" name="telefone" value="<?php echo esc_attr( $telefone ); ?>" /><br><br>
@@ -141,8 +146,16 @@ function myplugin_save_postdata( $post_id ) {
 
     $fields = array( 'area_atuacao','rede_social', 'link_rede_social', 'tipo_rede_social','telefone');
     foreach ($fields as $key => $value) {
-        updateCustomField($value,$post_id);
-    }  
+        if ($value === 'tipo_rede_social') {
+            // Lidar com o campo tipo_rede_social como um campo de seleção (select)
+            if ( isset( $_POST['tipo_rede_social'] ) ) {
+                update_post_meta( $post_id, 'tipo_rede_social', sanitize_text_field( $_POST['tipo_rede_social'] ) );
+            }
+        } else {
+            // Lidar com os outros campos como antes
+            updateCustomField($value,$post_id);
+        }
+    }   
   
   }
 
@@ -348,9 +361,7 @@ function obter_lojas($data) {
     $resposta = array();
 
     foreach ($lojas as $loja) {
-        $imagem_id = get_post_meta($loja->ID, 'imagem_id', true);
-        $imagem_url = ($imagem_id) ? wp_get_attachment_url($imagem_id) : '';
-
+        $imagem_url = get_the_post_thumbnail_url($loja->ID);
         $resposta[] = array(
             'id' => $loja->ID,
             'titulo' => $loja->post_title,
