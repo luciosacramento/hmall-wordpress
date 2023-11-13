@@ -319,7 +319,7 @@ add_action('rest_api_init', 'registrar_endpoint_lojas');
 
 function obter_lojas($data) {
 
-    if($data['busca']){
+    if($data['busca'] && $data['busca'] != ''){
         $busca = $data['busca'];
         $args = array(
             'post_type' => 'lojas',
@@ -355,7 +355,7 @@ function obter_lojas($data) {
             'post_status' => 'publish', 
         );
         $lojas = get_posts($args);
-        $lojas = array_unique($lojas);
+
     }
 
     $resposta = array();
